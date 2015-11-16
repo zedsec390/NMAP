@@ -142,7 +142,7 @@ Driver = {
 			self.tn3270:find('INVALID SYSTEM')               or
 			self.tn3270:find('NOT VALID')                    or
 			self.tn3270:find('COMMAND UNRECOGNIZED')         or
-			self.tn3270:find('INVALID USERID, APPLID') )     or -- thanks goes to Domonic White for creating these
+			self.tn3270:find('INVALID USERID, APPLID') )     or -- thanks goes to Dominic White for creating these
 			screen_diff(previous_screen, current_screen) > 75 then
 			-- Looks like an invalid APPLID.
 			return false,  brute.Error:new( "Invalid VTAM Application ID" )
