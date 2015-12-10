@@ -10,7 +10,7 @@ description = [[
 z/OS JES Network Job Entry (NJE) target node name brute force.
 
 NJE node communication is made up of an OHOST and an RHOST. Both fields
-must be present when conducting the handshake. This script attempts to
+must be present when conducting the handshake. This script attemtps to
 determine the target systems NJE node name.
 
 To initiate NJE the client sends a 33 byte record containing the type of
@@ -43,21 +43,23 @@ Since most systems will only have one node name, it is recommended to use the
 ---
 -- @usage
 -- nmap -sV --script=nje-node-brute <target>
+-- nmap --script=nje-node-brute --script-args=hostlist=nje_names.txt -p 175 <target>
 --
--- nmap --script=nje-node-brute --script-args=userdb=nje_names.txt -p 175 <target>
+-- @args nje-node-brute.hostlist The filename of a list of node names to try.
+--                               Defaults to "nselib/data/vhosts-default.lst"
 --
 -- @output
 -- PORT    STATE SERVICE REASON
 -- 175/tcp open  nje     syn-ack
 -- | nje-node-brute:
 -- |   Node Name:
--- |     WASHDC: System - Node Name
+-- |     Node Name:WASHDC - Valid credentials
 -- |_  Statistics: Performed 6 guesses in 14 seconds, average tps: 0
 --
 -- @changelog
 -- 2015-06-15 - v0.1 - created by Soldier of Fortran
 
-author = "Philip Young aka Soldier of Fortran"
+author = "Soldier of Fortran"
 license = "Same as Nmap--See http://nmap.org/book/man-legal.html"
 categories = {"intrusive", "brute"}
 
@@ -99,7 +101,8 @@ Driver = {
     if not status then return false, "Failed to send" end
     local status, data = self.socket:receive_bytes(33)
     if not status then return false, "Failed to receive" end
-    if ( data:sub(-1) == "\0" ) or ( data:sub(-1) == "\x04" ) then
+    if ( data:sub(-1) == "\0" ) or
+      ( data:sub(-1) == "\x04" ) then
       stdnse.verbose("Valid Node Name Found: %s", password)
       return true, creds.Account:new("Node Name", password, creds.State.VALID)
     end
@@ -113,28 +116,30 @@ local valid_name = function(x)
   return (string.len(x) <= 8 and string.match(x,patt))
 end
 
-
--- sub domain iterator
---
--- Oftentimes the LPAR will be one of the
--- subdomain of a system. This returns an iterator
--- of all domains in a hostname
-function domains(domain)
-  local n = 0
-	return function()
-		if n <= #domain then
-      n = n + 1
-      return domain[n]
-    else
-      return nil
-    end
-	end
+function iter(t)
+  local i, val
+  return function()
+    i, val = next(t, i)
+    return val
+  end
 end
 
 action = function( host, port )
-  local domain = stdnse.strsplit("%.",host.name)
+  -- Oftentimes the LPAR will be one of the subdomain of a system.
+  local names = host.name and stdnse.strsplit("%.", host.name) or {}
+  if host.targetname then
+    host.targetname:gsub("[^.]+", function(n) table.insert(names, n) end)
+  end
+  local filename = stdnse.get_script_args('nje-node-brute.hostlist')
+  filename = ( (filename and nmap.fetchfile(filename)) or filename ) or
+    nmap.fetchfile("nselib/data/vhosts-default.lst")
+  for l in io.lines(filename) do
+    if not l:match("#!comment:") then
+      table.insert(names, l)
+    end
+  end
   local engine = brute.Engine:new(Driver, host, port)
-  local users = unpwdb.filter_iterator(unpwdb.concat_iterators(domains(domain),brute.usernames_iterator()),valid_name)
+  local users = unpwdb.filter_iterator(iter(names), valid_name)
   engine.options:setOption("passonly", true )
   engine:setPasswordIterator(users)
   engine.options.script_name = SCRIPT_NAME

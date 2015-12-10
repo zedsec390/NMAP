@@ -140,15 +140,17 @@ Driver = {
 -- @param port port NSE object
 -- @param commands script-args of commands to use to get to TSO
 -- @return status true on success, false on failure
+-- @return name of security product installed
 local function tso_test( host, port, commands )
   stdnse.debug("Checking for TSO")
   local tn = Telnet:new()
   local status, err = tn:initiate(host,port)
   local tso = false -- initially we're not at TSO logon panel
+  local secprod = "RACF"
   tn:get_screen_debug() -- prints TN3270 screen to debug
   if not status then
     stdnse.debug("Could not initiate TN3270: %s", err )
-    return tso
+    return tso, "Could not Initiate TN3270"
   end
   stdnse.debug("Getting to TSO")
   local run = stdnse.strsplit(";%s*", commands)
@@ -158,13 +160,25 @@ local function tso_test( host, port, commands )
     tn:get_all_data()
   end
   tn:get_screen_debug()
+
   if tn:find("ENTER USERID") or tn:find("TSO/E LOGON")  then
     tso = true
+    -- Patch OA44855 removed the ability to enumerator users
+    -- we check for that here
+    tn:send_cursor("notreal")
+    tn:get_all_data()
+    if tn:find("IKJ56476I ENTER PASSWORD") then
+      return false, "Could not enumerate. PASSWORDPREPROMPT is set to ON."
+    end
   end
+
+  if tn:find("***") then
+    secprod = "TopSecret/ACF2"
+  end
+
   tn:send_pf(3)
-  tn:send_enter()
   tn:disconnect()
-  return tso
+  return tso, secprod, "Could not get to TSO. Try --script-args=tso-enum.commands='logon applid(tso)'. Aborting."
 end
 
 -- Filter iterator for unpwdb
@@ -178,7 +192,8 @@ end
 
 action = function(host, port)
   local commands = stdnse.get_script_args(SCRIPT_NAME .. '.commands') or "tso"
-  if tso_test(host, port, commands) then
+  local tsotst, secprod, err = tso_test(host, port, commands)
+  if tsotst then
     local options = { key1 = commands }
     stdnse.debug("Starting TSO User ID Enumeration")
     local engine = brute.Engine:new(Driver, host, port, options)
@@ -187,9 +202,11 @@ action = function(host, port)
     engine.options.passonly = true
     engine.options:setTitle("TSO User ID")
     local status, result = engine:start()
+    port.version.extrainfo = "Security: " .. secprod
+    nmap.set_port_version(host, port)
     return result
   else
-    return "Could not get to TSO. Try --script-args=tso-enum.commands='logon applid(tso)'. Aborting."
+    return err
   end
 
 end

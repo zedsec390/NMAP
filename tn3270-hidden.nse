@@ -23,7 +23,7 @@ Connects to a tn3270 'server' and displays hidden fields
 --
 -- @args tn3270.space whether you want to display hidden fields that
 --                    only contain space. Set to 'true' to display these
---                    fields.
+--                    fields. Default is <code>false</code>
 -- @args tn3270.commands a semi-colon seperated list of commands you want to 
 --                       issue before you check the screen for hidden fields.
 --                       For example if you want to get to a specific CICS

@@ -39,8 +39,13 @@ Connects to a tn3270 'server' and returns the screen.
 -- |
 -- |_Your IP(10.10.10.375   :64199), SNA LU(        )       05/30/15 13:33:37
 --
+-- @args tn3270.commands a semi-colon seperated list of commands you want to 
+--                       issue before printing the screen 
+--
+--
 -- @changelog
 -- 2015-05-30 - v0.1 - created by Soldier of Fortran
+-- 2015-11-14 - v0.2 - added commands argument
 --
 
 author = "Philip Young aka Soldier of Fortran"
@@ -48,15 +53,25 @@ license = "Same as Nmap--See http://nmap.org/book/man-legal.html"
 categories = {"safe", "discovery"}
 dependencies = {"tn3270-info"}
 
-portrule = shortport.port_or_service({23,992,623}, {"tn3270"})
+portrule = shortport.port_or_service({23,992}, {"tn3270"})
 
 action = function(host, port)
+  local commands = stdnse.get_script_args(SCRIPT_NAME .. '.commands') 
   local t = Telnet:new()
   local status, err = t:initiate(host,port)
   if not status then
     stdnse.debug("Could not initiate TN3270: %s", err )
     return
   else
+    if commands then
+      local run = stdnse.strsplit(";%s*", commands)
+      for i = 1, #run do
+        stdnse.debug(1,"Issuing Command (#%s of %s): %s", i, #run ,run[i])
+        t:send_cursor(run[i])
+        t:get_all_data()
+        t:get_screen_debug()
+      end
+    end
     status = t:get_all_data()
     if t:any_hidden() then
       local hidden_buggers = t:hidden_fields()
