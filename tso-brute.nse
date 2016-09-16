@@ -160,10 +160,28 @@ Driver = {
       if not always_logon and self.tn3270:find("already logged on") then
         register_invalid(user)
         return true, creds.Account:new(user, "<skipped>", "User logged on. Skipped.")
-      elseif not self.tn3270:find("IKJ56421I") then
+      elseif not (self.tn3270:find("IKJ56421I") or 
+                  self.tn3270:find("TSS7101E")  or
+                  self.tn3270:find("TSS7140E")  or
+		  self.tn3270:find("TSS7141E")  or
+		  self.tn3270:find("TSS7142E")  or
+		  self.tn3270:find("TSS7143E")  or
+                  self.tn3270:find("TSS7120E")) then
+	-- RACF:
         -- IKJ56421I PASSWORD NOT AUTHORIZED FOR USERID
+
+	-- Top Secret:
+	-- TSS7101E Password is Incorrect
+        -- TSS7140E Accessor ID Has Expired: No Longer Valid
+        -- TSS7141E Use of Accessor ID Suspended
+        -- TSS7142E Accessor ID Not Yet Available for Use - Still Inactive
+	-- TSS7143E Accessor ID Has Been Inactive Too Long
+        -- TSS7120E PASSWORD VIOLATION THRESHOLD EXCEEDED
+
+	stdnse.verbose(2,"Valid User/Pass" .. user .. "/" .. pass.. "MSG:" .. self.tn3270:get_screen():sub(1,80))
         return true, creds.Account:new(user, pass, creds.State.VALID)
       else
+	stdnse.verbose(self.tn3270:get_screen():sub(1,80))
         return false, brute.Error:new( "Incorrect password" )
       end
 
@@ -223,6 +241,12 @@ local valid_name = function(x)
   end
 end
 
+-- Checks string to see if it follows valid password limitations
+local valid_pass = function(x)
+  local patt = "[%w@#%$]"
+  return (string.len(x) <= 8 and string.match(x,patt))
+end
+
 action = function( host, port )
   local status, result
   local commands = stdnse.get_script_args(SCRIPT_NAME .. '.commands') or "tso"
@@ -237,8 +261,10 @@ action = function( host, port )
     local engine = brute.Engine:new(Driver, host, port, options)
     -- TSO has username restrictions. This sets the iterator to use only valid TSO userids
     engine:setUsernameIterator(unpwdb.filter_iterator(brute.usernames_iterator(),valid_name))
+    engine:setPasswordIterator(unpwdb.filter_iterator(brute.passwords_iterator(), valid_pass))
     engine.options.script_name = SCRIPT_NAME
-    engine.options:setTitle("Node Name")
+    engine.options:setOption("useraspass", false )
+    engine.options:setTitle("TSO Accounts")
     status, result = engine:start()
   else
     return "Could not get to TSO. Try --script-args=tso-user-enum.commands='logon applid(tso)'. Aborting."

@@ -1,9 +1,14 @@
+local nmap      = require "nmap"
 local stdnse    = require "stdnse"
 local shortport = require "shortport"
 local tn3270    = require "tn3270"
 local brute     = require "brute"
 local creds     = require "creds"
 local unpwdb    = require "unpwdb"
+local io        = require "io"
+local table     = require "table"
+local string   = require "string"
+
 
 description = [[
 CICS transaction ID enumerator for IBM mainframes.
@@ -102,7 +107,7 @@ Driver = {
     local timeout = 300
     local max_blank = 1
     local loop = 1
-    local err
+    local err, status
     stdnse.debug(2,"Getting to CICS")
     local run = stdnse.strsplit(";%s*", commands)
     for i = 1, #run do
@@ -216,7 +221,7 @@ local function cics_test( host, port, commands )
   --     (CESF with 'Sign-off is complete.' as the result)
   -- to confirm that we were in CICS. If so we return true
   -- otherwise we return false
-  count = 1
+  local count = 1
   while not tn:isClear() and count < 6 do
     -- some systems will just kick you off others are slow in responding
     -- this loop continues to try getting out of CICS 6 times. If it can't

@@ -89,11 +89,18 @@ Driver = {
   login = function (self, user, pass)
   -- pass is actually the user id we want to try
     local commands = self.options['key1']
+    local cmd_DATA = false
     stdnse.debug(2,"Getting to TSO")
     local run = stdnse.strsplit(";%s*", commands)
     for i = 1, #run do
       stdnse.debug(1,"Issuing Command (#%s of %s): %s", i, #run ,run[i])
-      self.tn3270:send_cursor(run[i])
+      if string.find(string.upper(run[i]),"logon applid") ~= nil then
+        stdnse.verbose(2,"Trying User ID: %s", pass)
+        self.tn3270:send_cursor(run[i] .. " DATA(" .. pass .. ")")
+        cmd_DATA = true
+      else
+        self.tn3270:send_cursor(run[i])
+      end
       self.tn3270:get_all_data()
     end
 
@@ -107,14 +114,17 @@ Driver = {
       return false, err
     end
 
-    stdnse.verbose(2,"Trying User ID: %s", pass)
-    self.tn3270:send_cursor(pass)
-    self.tn3270:get_all_data()
-    -- some systems require an enter after sending a valid user ID
-    if self.tn3270:find("***") then
-      self.tn3270:send_enter()
+    if not cmd_DATA then
+      stdnse.verbose(2,"Trying User ID: %s", pass)
+      self.tn3270:send_cursor(pass)
       self.tn3270:get_all_data()
+      -- some systems require an enter after sending a valid user ID
+      if self.tn3270:find("***") then
+        self.tn3270:send_enter()
+        self.tn3270:get_all_data()
+      end
     end
+
 
     stdnse.debug(2,"Screen Recieved for User ID: %s", pass)
     self.tn3270:get_screen_debug()
