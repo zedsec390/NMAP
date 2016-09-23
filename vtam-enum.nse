@@ -249,7 +249,7 @@ action = function(host, port)
 		if path ~= nil then stdnse.verbose(2,"Saving Screenshots to: %s", path) end
 	 	local engine = brute.Engine:new(Driver, host, port, options)
 	 	engine.options.script_name = SCRIPT_NAME
-    engine:setPasswordIterator(unpwdb.filter_iterator(iter(vtam_ids), valid_name))
+    engine:setPasswordIterator(unpwdb.filter_iterator(iter(vtam_ids), valid_vtam))
 	 	engine.options.passonly = true
 	 	engine.options:setTitle("VTAM Application ID")
 	 	local status, result = engine:start()
