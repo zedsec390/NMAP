@@ -133,10 +133,10 @@ Driver = {
 			self.tn3270:find('COMMAND UNRECOGNIZED')         or
 			self.tn3270:find('UNABLE TO CONNECT TO THE REQUESTED APPLICATION')         or
 			self.tn3270:find('COMMAND UNRECOGNISED')         or
-			self.tn3270:find('USSMSG01')                     or
-			self.tn3270:find('USSMSG02')                     or
-			self.tn3270:find('USSMSG03')                     or
-			self.tn3270:find('USSMSG04')                     or
+			self.tn3270:find('USSMSG03')         or
+			self.tn3270:find('USSMSG02')         or
+			self.tn3270:find('USSMSG01')         or
+			self.tn3270:find('USSMSG04')         or
 			self.tn3270:find('SESSION NOT BOUND')            or
 			self.tn3270:find('INVALID COMMAND')              or
 			self.tn3270:find('PARAMETER OMITTED')            or
@@ -238,14 +238,15 @@ action = function(host, port)
 	local path = stdnse.get_script_args(SCRIPT_NAME .. '.path') -- Folder for screen grabs
 	local macros = stdnse.get_script_args(SCRIPT_NAME .. '.macros') or false -- if set to true, doesn't prepend the commands with 'logon applid'
 	local commands = stdnse.get_script_args(SCRIPT_NAME .. '.commands') -- Commands to send to get to VTAM
-	local vtam_ids = {"tso", "CICS", "IMS", "NETVIEW"} -- these are defaults usually seen
+	local vtam_ids = {"tso", "CICS", "IMS", "NETVIEW", "TPX"} -- these are defaults usually seen
 
   vtam_id_file = ( (vtam_id_file and nmap.fetchfile(vtam_id_file)) or vtam_id_file ) or
     nmap.fetchfile("nselib/data/vhosts-default.lst")
 
   for l in io.lines(vtam_id_file) do
-    if not l:match("#!comment:") then
-      table.insert(vtam_ids, l)
+    cleaned_line = string.gsub(l,"[\r\n]","")
+    if not cleaned_line:match("#!comment:") then
+      table.insert(vtam_ids, cleaned_line)
     end
   end
 
