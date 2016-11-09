@@ -131,6 +131,12 @@ Driver = {
 
 		if (self.tn3270:find('UNABLE TO ESTABLISH SESSION')  or
 			self.tn3270:find('COMMAND UNRECOGNIZED')         or
+			self.tn3270:find('UNABLE TO CONNECT TO THE REQUESTED APPLICATION')         or
+			self.tn3270:find('COMMAND UNRECOGNISED')         or
+			self.tn3270:find('USSMSG01')                     or
+			self.tn3270:find('USSMSG02')                     or
+			self.tn3270:find('USSMSG03')                     or
+			self.tn3270:find('USSMSG04')                     or
 			self.tn3270:find('SESSION NOT BOUND')            or
 			self.tn3270:find('INVALID COMMAND')              or
 			self.tn3270:find('PARAMETER OMITTED')            or
